@@ -236,7 +236,7 @@ macro_rules! bench_file_msgpack {
                 rmpv::encode::write_value(out, &dom)
             });
             let mut serialized = Vec::new();
-            rmp_serde::encode::write_value(&mut serialized, &dom).unwrap();
+            rmpv::encode::write_value(&mut serialized, &dom).unwrap();
             print!("{:6} MB/s", throughput(dur, serialized.len()));
         }
         #[cfg(not(feature = "stringify-dom"))]
