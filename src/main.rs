@@ -196,6 +196,82 @@ macro_rules! bench_file_simd_json {
     }
 }
 
+#[cfg(feature = "lib-rmp")]
+macro_rules! bench_file_msgpack {
+    {
+        path: $path:expr,
+        structure: $structure:ty,
+    } => {
+        let num_trials = num_trials().unwrap_or(256);
+
+        print!("{:22}", $path);
+        io::stdout().flush().unwrap();
+
+        let contents: Vec<u8> = {
+            let structure: $structure = serde_json::from_reader(File::open($path).unwrap()).unwrap();
+            rmp_serde::to_vec(&structure).unwrap()
+        };
+
+        #[cfg(feature = "parse-dom")]
+        {
+            use timer::Benchmark;
+            let mut benchmark = Benchmark::new();
+            for _ in 0..num_trials {
+                let mut timer = benchmark.start();
+                let _parsed = rmpv::decode::value::read_value(&mut contents.as_slice()).unwrap();
+                timer.stop();
+            }
+            let dur = benchmark.min_elapsed();
+            print!("{:6} MB/s", throughput(dur, contents.len()));
+            io::stdout().flush().unwrap();
+        }
+        #[cfg(not(feature = "parse-dom"))]
+        print!("          ");
+
+        #[cfg(feature = "stringify-dom")]
+        {
+            let len = contents.len();
+            let dom = rmpv::decode::value::read_value(&mut contents.as_slice()).unwrap();
+            let dur = timer::bench_with_buf(num_trials, len, |out| {
+                rmpv::encode::write_value(out, &dom)
+            });
+            let mut serialized = Vec::new();
+            rmp_serde::encode::write_value(&mut serialized, &dom).unwrap();
+            print!("{:6} MB/s", throughput(dur, serialized.len()));
+        }
+        #[cfg(not(feature = "stringify-dom"))]
+        print!("          ");
+
+
+        #[cfg(feature = "parse-struct")]
+        {
+            let dur = timer::bench(num_trials, || {
+                let parsed: $structure = rmp_serde::from_slice(&contents).unwrap();
+                parsed
+            });
+            print!("{:6} MB/s", throughput(dur, contents.len()));
+            io::stdout().flush().unwrap();
+        }
+        #[cfg(not(feature = "parse-struct"))]
+        print!("          ");
+
+        #[cfg(feature = "stringify-struct")]
+        {
+            let len = contents.len();
+            let parsed: $structure = rmp_serde::from_slice(&contents).unwrap();
+            let dur = timer::bench_with_buf(num_trials, len, |out| {
+                rmp_serde::encode::write(out, &parsed).unwrap()
+            });
+            let mut serialized = Vec::new();
+            rmp_serde::encode::write(&mut serialized, &parsed).unwrap();
+            print!("{:6} MB/s", throughput(dur, serialized.len()));
+            io::stdout().flush().unwrap();
+        }
+
+        println!();
+    };
+}
+
 fn main() {
     print!("{:>35}{:>24}", "DOM", "STRUCT");
 
@@ -225,6 +301,12 @@ fn main() {
     bench! {
         name: "simd-json",
         bench: bench_file_simd_json,
+    }
+
+    #[cfg(feature = "lib-rmp")]
+    bench! {
+        name: "rmp",
+        bench: bench_file_msgpack,
     }
 }
 

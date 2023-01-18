@@ -13,13 +13,16 @@ serde = { version = "1.0", features = ["derive"], optional = true }
 serde_json = { version = "1.0", optional = true }
 simd-json = { version = "0.7", optional = true}
 time = "0.3"
+rmp-serde = { version = "1.1.1", optional = true}
+rmpv = { version = "1.0.0", optional = true}
 
 [features]
 default = ["performance", "all-libs", "all-files"]
-all-libs = ["lib-serde", "lib-rustc-serialize", "lib-simd-json"]
+all-libs = ["lib-serde", "lib-rustc-serialize", "lib-simd-json", "lib-rmp"]
 all-files = ["file-canada", "file-citm-catalog", "file-twitter"]
 performance = ["parse-dom", "stringify-dom", "parse-struct", "stringify-struct"]
 lib-serde = ["serde", "serde_json"]
+lib-rmp = ["serde", "rmp-serde", "rmpv"]
 lib-simd-json = ["serde", "simd-json"]
 lib-rustc-serialize = ["rustc-serialize"]
 file-canada = []
